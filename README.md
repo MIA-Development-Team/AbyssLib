@@ -43,7 +43,7 @@ Altnoir 系列模组的公共前置库。**NeoForge 1.21.1 / Java 21** · 包名
 - [5. 消费方接入](#5-消费方接入)
 - [6. 迁移指南](#6-迁移指南)
 - [7. 排错](#7-排错)
-- [8. 分支与许可](#8-分支与许可)
+- [8. 分支、版本与许可](#8-分支版本与许可)
 - [9. 原版结构扩展（per-chunk 放置与 atlas:jigsaw）](#9-原版结构扩展per-chunk-放置与-atlasjigsaw)
   - [9.1 三个新增的类型](#91-三个新增的类型)
   - [9.2 用 datagen 生成（推荐，走 reginth）](#92-用-datagen-生成推荐走-reginth)
@@ -299,7 +299,7 @@ public static final EntityEntry<MyEntity> MY_ENTITY = REGINTH
 
 [Athena](https://github.com/terrarium-earth/Athena)（MIT，Terrarium Earth）的 1.21.1 NeoForge 部分
 **已源码级并入本库**：消费方可以直接写连接纹理（CTM）/ 拼接 / 柱状等动态模型，
-**无需安装 Athena 模组，也无需自行打包**。上游来源与许可见 [§8 分支与许可](#8-分支与许可)。
+**无需安装 Athena 模组，也无需自行打包**。上游来源与许可见 [§8 分支与许可](#8-分支版本与许可)。
 
 **命名统一**：类名（`AL*`）、包名（`com.altnoir.abysslib.model.**`）、资源 id 都用本库自己的命名空间 **`relink`**
 （声明键 `relink:loader`、类型 `relink:ctm`、定义目录 `assets/<ns>/relink/`）。
@@ -468,7 +468,7 @@ emissiveExclude = []         # 不应用叠加层的贴图 / 命名空间前缀�
 **共存、互不覆盖**。
 
 > 结构 / 世界生成（`atlas:jigsaw`、`atlas:per_chunk`、`atlas:grid_profile`）的 datagen 走**另一条通道**
-> （reginth 的 `getDataGenInitializer()`），见 [§9](#9-原版结构扩展per-chunk-放置与-abysslibjigsaw)。本节只讲**模型定义**。
+> （reginth 的 `getDataGenInitializer()`），见 [§9](#9-原版结构扩展per-chunk-放置与-atlasjigsaw)。本节只讲**模型定义**。
 
 ```java
 // 1) 常规模型 / blockstate / 物品模型：照旧用现有 helper
@@ -813,7 +813,7 @@ Get-ChildItem -Recurse -Directory -Filter abysslib | Where-Object { $_.Parent.Na
   ForEach-Object { Rename-Item $_.FullName -NewName 'relink' }
 ```
 
-> 注意 [§6.1](#61-从上游-athena-资源迁移20-00-起可选)：**上游 Athena 写法（`athena:*`）不需要改**，
+> 注意 [§6.1](#61-从上游-athena-资源迁移100-起可选)：**上游 Athena 写法（`athena:*`）不需要改**，
 > 兼容层照旧认。
 > 反过来，如果你的资源里写过 `relink:` 之前的老名字，那就按上表改。
 
