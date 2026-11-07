@@ -1,6 +1,7 @@
 package com.altnoir.abysslib.model.neoforge.client;
 
 import com.altnoir.abysslib.client.ALClientConfig;
+import com.altnoir.abysslib.model.api.client.DynamicEmissive;
 import com.altnoir.abysslib.model.api.client.models.ALModelAttributes;
 import com.altnoir.abysslib.model.api.client.models.neoforge.FactoryManagerImpl;
 import com.altnoir.abysslib.model.api.client.neoforge.ALBlockStateModel;
@@ -42,6 +43,7 @@ public final class ALModelSetup {
         var models = event.getBakingResult().blockStateModels();
         Map<Identifier, Optional<BlockStateModel>> replacements = new HashMap<>();
         Map<BlockStateModel, BlockStateModel> wrappers = new IdentityHashMap<>();
+        Map<DynamicEmissive.Provider, Map<BlockStateModel, BlockStateModel>> dynamicWrappers = new IdentityHashMap<>();
         models.replaceAll((state, original) -> {
             Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
             JsonObject raw = ALModelDefinitions.getRawData(id);
@@ -52,6 +54,11 @@ public final class ALModelSetup {
             }
             if (ALClientConfig.overlayEnabled()) {
                 model = wrappers.computeIfAbsent(model, EmissiveOverlayModel::new);
+            }
+            DynamicEmissive.Provider provider = DynamicEmissive.provider(id);
+            if (provider != null) {
+                model = dynamicWrappers.computeIfAbsent(provider, ignored -> new IdentityHashMap<>())
+                        .computeIfAbsent(model, key -> new EmissiveOverlayModel(key, provider));
             }
             return model;
         });

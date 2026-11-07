@@ -1,6 +1,7 @@
 package com.altnoir.abysslib.model.impl.client.models;
 
 import com.altnoir.abysslib.client.ALClientConfig;
+import com.altnoir.abysslib.model.api.client.DynamicEmissive;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
@@ -25,26 +26,42 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class EmissiveOverlayModel extends DelegateBlockStateModel {
     private final Map<Identifier, Optional<TextureAtlasSprite>> sprites = new ConcurrentHashMap<>();
+    @Nullable
+    private final DynamicEmissive.Provider dynamicProvider;
 
     public EmissiveOverlayModel(BlockStateModel delegate) {
         super(delegate);
+        this.dynamicProvider = null;
+    }
+
+    public EmissiveOverlayModel(BlockStateModel delegate, DynamicEmissive.Provider dynamicProvider) {
+        super(delegate);
+        this.dynamicProvider = dynamicProvider;
     }
 
     @Override
     @Deprecated
     public void collectParts(RandomSource random, List<BlockStateModelPart> parts) {
-        collectParts(BlockAndTintGetter.EMPTY, BlockPos.ZERO, Blocks.AIR.defaultBlockState(), random, parts);
+        if (this.dynamicProvider != null) {
+            this.delegate.collectParts(random, parts);
+        } else {
+            collectParts(BlockAndTintGetter.EMPTY, BlockPos.ZERO, Blocks.AIR.defaultBlockState(), random, parts);
+        }
     }
 
     @Override
     public void collectParts(BlockAndTintGetter level, BlockPos pos, BlockState state, RandomSource random, List<BlockStateModelPart> parts) {
+        if (this.dynamicProvider != null && !this.dynamicProvider.isActive(level, pos, state)) {
+            this.delegate.collectParts(level, pos, state, random, parts);
+            return;
+        }
         List<BlockStateModelPart> original = new ArrayList<>();
         this.delegate.collectParts(level, pos, state, random, original);
         original.forEach(part -> parts.add(new OverlayPart(part, this)));
     }
 
     private List<BakedQuad> addOverlay(List<BakedQuad> base) {
-        if (!ALClientConfig.overlayEnabled() || base.isEmpty()) return base;
+        if ((this.dynamicProvider == null && !ALClientConfig.overlayEnabled()) || base.isEmpty()) return base;
         List<BakedQuad> result = null;
         for (BakedQuad quad : base) {
             TextureAtlasSprite sprite = overlaySprite(quad.materialInfo().sprite());
@@ -57,15 +74,15 @@ public final class EmissiveOverlayModel extends DelegateBlockStateModel {
 
     @Nullable
     private TextureAtlasSprite overlaySprite(TextureAtlasSprite base) {
-        String suffix = ALClientConfig.emissiveSuffix;
+        String suffix = this.dynamicProvider == null ? ALClientConfig.emissiveSuffix : DynamicEmissive.TEXTURE_SUFFIX;
         if (suffix.isEmpty()) return null;
         Identifier baseId = base.contents().name();
-        if (ALClientConfig.isExcluded(baseId)) return null;
+        if (this.dynamicProvider == null && ALClientConfig.isExcluded(baseId)) return null;
         Identifier overlayId = baseId.withSuffix(suffix);
         return this.sprites.computeIfAbsent(overlayId, id -> {
             TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
                     .getAtlasOrThrow(base.atlasLocation()).getSprite(id);
-            return sprite != null && !sprite.contents().name().equals(id) ? Optional.of(sprite) : Optional.empty();
+            return sprite != null && sprite.contents().name().equals(id) ? Optional.of(sprite) : Optional.empty();
         }).orElse(null);
     }
 

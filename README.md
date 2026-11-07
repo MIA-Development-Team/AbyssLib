@@ -5,7 +5,7 @@ Altnoir 系列模组的公共前置库（NeoForge **26.1.2.94** / Java 25 / modd
 - 包名：`com.altnoir.abysslib`
 - 作者：Altnoir
 - 分支：`26.1.2-NeoForge`（独立 git worktree：`D:\Minecraft\ModDev\AbyssLib-26.1.2`）
-- 版本：`1.0-01`（以根目录 `gradle.properties` 为准）
+- 版本：`1.0-02`（以根目录 `gradle.properties` 为准）
 
 > 与 1.21.1 线（`1.21.1-NeoForge`）的差异：**API 不通用**。
 > - 26.1 使用 `Identifier`（无 `ResourceLocation`）、`GuiGraphicsExtractor`/`RenderPipelines` 渲染管线；
@@ -51,6 +51,23 @@ Altnoir 系列模组的公共前置库（NeoForge **26.1.2.94** / Java 25 / modd
 > **跑 run 需要 Java 21 工具链**：ModDevGradle 的 `downloadAssets` 任务要求 Java 21，而工程本身target Java 25。
 > 本机已在 `GRADLE_USER_HOME/gradle.properties` 里用 `org.gradle.java.installations.paths` 指向 JDK-21；
 > 换机器时若报 "Cannot find a Java installation … languageVersion=21"，照此补一行即可。
+
+## ReLink 按位置动态发光
+
+客户端可在模型烘焙前按方块 ID 注册状态提供器，控制局部发光叠加层：
+
+```java
+DynamicEmissive.register(Identifier.fromNamespaceAndPath("mymod", "coil"),
+        (level, pos, state) -> ClientCoilState.isActive(pos));
+```
+
+普通方块模型和 ReLink CTM 模型均可使用。每张需要发光的基础贴图旁放置同名的 `_active_e` 遮罩
+（如 `coil.png` 对应 `coil_active_e.png`），并确保遮罩被加入方块贴图图集。遮罩透明部分不会覆盖底图；
+CTM 应为实际使用的各张连接贴图分别提供对齐的遮罩。动态叠加层不依赖默认关闭的全局 `_e` 选项，
+只改变外观，不改变世界光照。
+
+提供器在区块构建工作线程调用，状态读取必须线程安全。消费方负责同步服务端状态、在结果改变时重建
+受影响的区块网格，并在区块卸载、切换维度或断线时清理其客户端缓存。未注册的方块保持原有行为。
 
 ## 通用工具（AbyssLib 静态方法）
 
