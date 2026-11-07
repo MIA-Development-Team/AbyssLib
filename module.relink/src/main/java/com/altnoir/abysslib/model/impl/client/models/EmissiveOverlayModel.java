@@ -2,6 +2,7 @@ package com.altnoir.abysslib.model.impl.client.models;
 
 import com.altnoir.abysslib.model.api.client.utils.ALModelUtils;
 import com.altnoir.abysslib.client.ALClientConfig;
+import com.altnoir.abysslib.model.api.client.DynamicEmissive;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.model.BakedQuad;
@@ -10,12 +11,15 @@ import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.BlockAndTintGetter;
 import net.neoforged.neoforge.client.ChunkRenderTypeSet;
 import net.neoforged.neoforge.client.model.BakedModelWrapper;
 import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.client.model.data.ModelProperty;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -43,6 +47,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * 开关与后缀来自 {@link ALClientConfig}（默认关闭）。
  */
 public class EmissiveOverlayModel extends BakedModelWrapper<BakedModel> {
+    private static final ModelProperty<Boolean> DYNAMIC_ACTIVE = new ModelProperty<>();
+    @Nullable
+    private final DynamicEmissive.Provider dynamicProvider;
 
     /** 探测用方向（含 null = 不剔面）。 */
     private static final Direction[] PROBE_SIDES = {
@@ -64,6 +71,19 @@ public class EmissiveOverlayModel extends BakedModelWrapper<BakedModel> {
 
     public EmissiveOverlayModel(BakedModel originalModel) {
         super(originalModel);
+        this.dynamicProvider = null;
+    }
+
+    public EmissiveOverlayModel(BakedModel originalModel, DynamicEmissive.Provider dynamicProvider) {
+        super(originalModel);
+        this.dynamicProvider = dynamicProvider;
+    }
+
+    @Override
+    public ModelData getModelData(BlockAndTintGetter level, BlockPos pos, BlockState state, ModelData data) {
+        ModelData result = originalModel.getModelData(level, pos, state, data);
+        return dynamicProvider == null ? result : result.derive()
+                .with(DYNAMIC_ACTIVE, dynamicProvider.isActive(level, pos, state)).build();
     }
 
     @Override
@@ -114,6 +134,12 @@ public class EmissiveOverlayModel extends BakedModelWrapper<BakedModel> {
      * 关闭功能时不写缓存：此时每条查询都直接返回"基贴图渲染层 + 无叠加层"，不必为全部方块状态留缓存条目。
      */
     private CachedPlan cachedPlan(BlockState state, RandomSource rand, ModelData data) {
+        if (dynamicProvider != null) {
+            final ChunkRenderTypeSet base = originalModel.getRenderTypes(state, rand, data);
+            final Optional<Plan> plan = !Boolean.TRUE.equals(data.get(DYNAMIC_ACTIVE)) || base.isEmpty()
+                    ? Optional.empty() : probe(state, rand, data, base);
+            return new CachedPlan("dynamic", base, plan);
+        }
         final String configKey = ALClientConfig.overlayConfigKey();
         final CachedPlan cached = plans.get(state);
         if (cached != null && cached.configKey().equals(configKey)) {
@@ -150,12 +176,12 @@ public class EmissiveOverlayModel extends BakedModelWrapper<BakedModel> {
     /** 基贴图 {@code <name>} → 叠加贴图 {@code <name> + 后缀}（不存在返回 null，带缓存、配置实时读取）。 */
     @Nullable
     private TextureAtlasSprite overlaySprite(TextureAtlasSprite baseSprite) {
-        final String suffix = ALClientConfig.emissiveSuffix;
+        final String suffix = dynamicProvider == null ? ALClientConfig.emissiveSuffix : DynamicEmissive.TEXTURE_SUFFIX;
         if (suffix.isEmpty()) {
             return null;
         }
         final ResourceLocation base = baseSprite.contents().name();
-        if (ALClientConfig.isExcluded(base)) {
+        if (dynamicProvider == null && ALClientConfig.isExcluded(base)) {
             return null;
         }
         final ResourceLocation overlayId = base.withSuffix(suffix);

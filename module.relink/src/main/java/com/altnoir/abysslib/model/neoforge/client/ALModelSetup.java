@@ -1,6 +1,7 @@
 package com.altnoir.abysslib.model.neoforge.client;
 
 import com.altnoir.abysslib.model.ALAthenaCompat;
+import com.altnoir.abysslib.model.api.client.DynamicEmissive;
 import com.altnoir.abysslib.model.api.client.models.ALModelAttributes;
 import com.altnoir.abysslib.model.api.client.models.neoforge.FactoryManagerImpl;
 import com.altnoir.abysslib.model.api.client.neoforge.ALUnbakedModel;
@@ -79,6 +80,10 @@ public final class ALModelSetup {
             }
             if (overlay) {
                 model = wrapOverlay(id, model);
+            }
+            var dynamicProvider = DynamicEmissive.provider(id.id());
+            if (dynamicProvider != null && !"inventory".equals(id.getVariant())) {
+                model = new EmissiveOverlayModel(model, dynamicProvider);
             }
             return model;
         });

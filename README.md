@@ -1,6 +1,6 @@
 # AbyssLib
 
-Altnoir 系列模组的公共前置库。**NeoForge 1.21.1 / Java 21** · 包名 `com.altnoir.abysslib` · 许可 MIT
+Altnoir 系列模组的公共前置库。**NeoForge 1.21.1 / Java 21** · 包名 `com.altnoir.abysslib` · [许可与第三方声明](THIRD_PARTY_NOTICES.md)
 
 本库是**模块化**的：三个功能模块各自是一个可单独安装的模组，另有一个聚合包把三者装在一起。
 
@@ -475,6 +475,13 @@ emissiveExclude = []         # 不应用叠加层的贴图 / 命名空间前缀�
 - 基贴图 quad 完全不动（叠加层是**副本**），不影响共用同一模型/贴图的其它方块；
 - **只对方块生效**（物品 / 生物 / 方块实体暂不支持）；
 - 与 §3.3 的 `relink:emissive` 互不冲突，可叠加。
+
+#### 按方块位置控制发光
+
+客户端可在模型烘焙前调用 `DynamicEmissive.register(blockId, provider)`，按方块位置提供线程安全的发光状态。
+发光遮罩与原贴图同目录，名称为原贴图名加 `_active_e`；只绘制需要发亮的像素，其余保持透明。
+该效果独立于 `emissiveLayer` 配置，支持普通方块和 CTM；状态变化后调用方需要通知客户端重建对应区块网格。
+provider 在区块渲染工作线程上运行，应读取不可变快照，不能访问仅限主线程的数据。
 
 ### 3.5 用 datagen 生成定义（推荐做法）
 
@@ -956,8 +963,13 @@ AbyssLib/ReLink: emissive overlay enabled for '<blockstate>' (base=..., overlay=
 
 | 内置内容 | 来源 | 许可 |
 |---|---|---|
-| `Reginth`（注册框架） | Registrate `MC1.21-1.3.0+67`（tterrag1098） | MIT |
-| CTM / 动态模型加载器 | Athena 1.21.1（Terrarium Earth） | MIT |
+| `Reginth`（注册框架） | Registrate `MC1.21-1.3.0+67`（tterrag1098 及贡献者） | MPL-2.0，适用于 Registrate 派生文件及其修改 |
+| CTM / 动态模型加载器 | Athena `4.0.6`（Minecraft 1.21.1，Terrarium Earth） | MIT，保留上游版权与许可声明 |
+
+完整署名、许可文本和源码范围见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
+Reginth 和 ReLink 的二进制包与源码包在 `META-INF/` 中携带各自的第三方声明和许可全文。
+再分发 Reginth 或聚合包时，按声明提供与内嵌 Reginth 二进制同版本的 `-sources.jar`，
+或告知接收者如何取得该版本的源码。
 
 ---
 
