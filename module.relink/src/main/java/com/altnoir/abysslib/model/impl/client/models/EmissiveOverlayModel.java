@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.sprite.Material;
+import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
@@ -25,7 +26,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class EmissiveOverlayModel extends DelegateBlockStateModel {
-    private final Map<Identifier, Optional<TextureAtlasSprite>> sprites = new ConcurrentHashMap<>();
+    private final Map<SpriteId, Optional<TextureAtlasSprite>> sprites = new ConcurrentHashMap<>();
     @Nullable
     private final DynamicEmissive.Provider dynamicProvider;
 
@@ -78,11 +79,10 @@ public final class EmissiveOverlayModel extends DelegateBlockStateModel {
         if (suffix.isEmpty()) return null;
         Identifier baseId = base.contents().name();
         if (this.dynamicProvider == null && ALClientConfig.isExcluded(baseId)) return null;
-        Identifier overlayId = baseId.withSuffix(suffix);
+        SpriteId overlayId = new SpriteId(base.atlasLocation(), baseId.withSuffix(suffix));
         return this.sprites.computeIfAbsent(overlayId, id -> {
-            TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager()
-                    .getAtlasOrThrow(base.atlasLocation()).getSprite(id);
-            return sprite != null && sprite.contents().name().equals(id) ? Optional.of(sprite) : Optional.empty();
+            TextureAtlasSprite sprite = Minecraft.getInstance().getAtlasManager().get(id);
+            return sprite.contents().name().equals(id.texture()) ? Optional.of(sprite) : Optional.empty();
         }).orElse(null);
     }
 

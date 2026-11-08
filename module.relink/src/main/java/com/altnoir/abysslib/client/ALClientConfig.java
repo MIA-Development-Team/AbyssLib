@@ -15,9 +15,9 @@ public final class ALClientConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
     /**
-     * 是否启用发光叠加层（默认关闭）。
+     * 是否启用发光叠加层（默认开启）。
      */
-    public static boolean emissiveLayer = false;
+    public static boolean emissiveLayer = true;
 
     /**
      * 发光叠加层的贴图后缀（默认 {@code "_e"}；留空 = 关闭）。改动后需按 F3+T 重载资源。
@@ -37,7 +37,7 @@ public final class ALClientConfig {
                     "(example: minecraft:block/iron_ore -> minecraft:block/iron_ore_e, draw only the glowing pixels there).",
                     "Applies immediately: disabling rebuilds chunks, enabling reloads client resources automatically.")
             .translation(configKey("emissiveLayer"))
-            .define("emissiveLayer", false);
+            .define("emissiveLayer", true);
 
     private static final ModConfigSpec.ConfigValue<String> EMISSIVE_SUFFIX = BUILDER
             .comment("Suffix of the emissive overlay texture. OptiFine uses \"_e\".",

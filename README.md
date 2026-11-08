@@ -5,7 +5,7 @@ Altnoir 系列模组的公共前置库（NeoForge **26.1.2.94** / Java 25 / modd
 - 包名：`com.altnoir.abysslib`
 - 作者：Altnoir
 - 分支：`26.1.2-NeoForge`（独立 git worktree：`D:\Minecraft\ModDev\AbyssLib-26.1.2`）
-- 版本：`1.0-02`（以根目录 `gradle.properties` 为准）
+- 版本：`1.0-03`（以根目录 `gradle.properties` 为准）
 
 > 与 1.21.1 线（`1.21.1-NeoForge`）的差异：**API 不通用**。
 > - 26.1 使用 `Identifier`（无 `ResourceLocation`）、`GuiGraphicsExtractor`/`RenderPipelines` 渲染管线；
@@ -63,7 +63,7 @@ DynamicEmissive.register(Identifier.fromNamespaceAndPath("mymod", "coil"),
 
 普通方块模型和 ReLink CTM 模型均可使用。每张需要发光的基础贴图旁放置同名的 `_active_e` 遮罩
 （如 `coil.png` 对应 `coil_active_e.png`），并确保遮罩被加入方块贴图图集。遮罩透明部分不会覆盖底图；
-CTM 应为实际使用的各张连接贴图分别提供对齐的遮罩。动态叠加层不依赖默认关闭的全局 `_e` 选项，
+CTM 应为实际使用的各张连接贴图分别提供对齐的遮罩。动态叠加层不依赖全局 `_e` 选项，
 只改变外观，不改变世界光照。
 
 提供器在区块构建工作线程调用，状态读取必须线程安全。消费方负责同步服务端状态、在结果改变时重建
