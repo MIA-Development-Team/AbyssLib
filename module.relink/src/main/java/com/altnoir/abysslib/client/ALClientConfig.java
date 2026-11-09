@@ -27,7 +27,7 @@ public final class ALClientConfig {
     /** 是否启用发光叠加层（默认关闭）。 */
     public static boolean emissiveLayer = false;
 
-    /** 发光叠加层的贴图后缀（默认 {@code "_e"}；留空 = 关闭）。改动后需按 F3+T 重载资源。 */
+    /** 发光叠加层的贴图后缀（默认 {@code "_e"}；留空 = 关闭）。 */
     public static String emissiveSuffix = "_e";
 
     /** 不应用发光叠加层的贴图 / 命名空间前缀列表。 */
@@ -46,7 +46,7 @@ public final class ALClientConfig {
 
     private static final ModConfigSpec.ConfigValue<String> EMISSIVE_SUFFIX = BUILDER
             .comment("Suffix of the emissive overlay texture. OptiFine uses \"_e\".",
-                    "Empty string disables the feature. Changed while enabled, chunks are rebuilt automatically.")
+                    "Empty string disables the feature. Changing the suffix while enabled reloads client resources.")
             .translation(configKey("emissiveSuffix"))
             .define("emissiveSuffix", "_e");
 
@@ -69,9 +69,9 @@ public final class ALClientConfig {
     public enum Reload {
         /** 什么都没变。 */
         NONE,
-        /** 只需重建区块网格：关闭叠加层、或改了后缀 / 排除表（模型包装仍在，读的是实时配置）。 */
+        /** 关闭叠加层时重建区块网格。 */
         CHUNKS,
-        /** 需要重新烘焙模型：从关闭切到开启（方块模型要重新包一层）。 */
+        /** 开启叠加层或修改配对规则时重载资源。 */
         MODELS
     }
 
@@ -107,15 +107,13 @@ public final class ALClientConfig {
             return Reload.CHUNKS;
         }
         if (nowEnabled && (!wasSuffix.equals(emissiveSuffix) || !wasExclude.equals(emissiveExclude))) {
-            return Reload.CHUNKS;
+            return Reload.MODELS;
         }
         return Reload.NONE;
     }
 
     /**
      * {@return 影响"是否发光 / 用哪张贴图"的配置指纹}
-     * <p>
-     * 渲染层按它做缓存键：开关、后缀或排除表一变，缓存自动失效，无需重启或重载资源。
      */
     public static String overlayConfigKey() {
         return emissiveLayer + "\u0000" + emissiveSuffix + "\u0000" + String.join("\u0000", emissiveExclude);

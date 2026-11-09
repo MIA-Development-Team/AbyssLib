@@ -9,17 +9,27 @@ import com.altnoir.abysslib.model.api.client.utils.ALUnbakedModelLoader;
 import com.altnoir.abysslib.model.api.client.utils.ALModelUtils;
 import com.altnoir.abysslib.model.impl.client.DefaultModels;
 import com.altnoir.abysslib.model.impl.client.models.EmissiveOverlayModel;
+import com.altnoir.abysslib.model.impl.client.models.EmissiveSpriteIndex;
 import com.altnoir.abysslib.model.impl.client.models.EmissiveWrappedModel;
 import com.altnoir.abysslib.model.impl.loading.ALModelDefinitions;
 import com.altnoir.abysslib.client.ALClientConfig;
 import com.google.gson.JsonObject;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.client.resources.model.ModelBakery;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.client.resources.model.UnbakedModel;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * 内置模型加载器的客户端接线（由 {@code AbyssLibReLink} 调用，专用服务端不会加载本类）。
@@ -37,6 +47,7 @@ import org.jetbrains.annotations.Nullable;
  * </ul>
  */
 public final class ALModelSetup {
+    private static final Map<ModelBakery, PendingOverlays> PENDING_OVERLAYS = Collections.synchronizedMap(new WeakHashMap<>());
 
     /** 模型 JSON 中 {@code "loader"} 字段使用的几何加载器 id。 */
     public static final ResourceLocation GEOMETRY_LOADER_ID =
@@ -49,6 +60,7 @@ public final class ALModelSetup {
         DefaultModels.init();
         modEventBus.addListener(ALModelSetup::onRegisterGeometryLoaders);
         modEventBus.addListener(ALModelSetup::onModifyBakingResult);
+        modEventBus.addListener(ALModelSetup::onBakingCompleted);
     }
 
     public static void onRegisterGeometryLoaders(ModelEvent.RegisterGeometryLoaders event) {
@@ -65,7 +77,7 @@ public final class ALModelSetup {
      * <ol>
      *     <li>依次询问所有已注册的模型类型（取决于 {@code relink:loader}），命中者用本库模型替换；</li>
      *     <li>否则，若该方块声明了 {@code relink:emissive}，则把**原版模型**包一层全亮（本库扩展）；</li>
-     *     <li>若客户端配置启用了 OptiFine 式发光叠加层，再包一层 {@link EmissiveOverlayModel}（本库扩展）。</li>
+     *     <li>若客户端配置启用了 OptiFine 式发光叠加层，接入图集就绪后准备的叠加模型。</li>
      * </ol>
      * 与上游 mixin 的等价性：上游是在 {@code bakeUncached} 之前把 unbaked 模型换掉，效果同为
      * "该顶层模型最终由本库模型生成"。差异仅在作用域——本事件只覆盖顶层模型（{@code topLevelModels}），
@@ -73,20 +85,35 @@ public final class ALModelSetup {
      */
     public static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {
         final boolean overlay = ALClientConfig.overlayEnabled();
+        var sprites = new EmissiveSpriteIndex(overlay);
+        Map<BakedModel, EmissiveOverlayModel> overlayModels = new IdentityHashMap<>();
         event.getModels().replaceAll((id, original) -> {
             BakedModel model = tryModelType(event, id);
             if (model == null) {
                 model = wrapEmissive(id, original);
             }
-            if (overlay) {
-                model = wrapOverlay(id, model);
-            }
-            var dynamicProvider = DynamicEmissive.provider(id.id());
-            if (dynamicProvider != null && !"inventory".equals(id.getVariant())) {
-                model = new EmissiveOverlayModel(model, dynamicProvider);
+            if (!"inventory".equals(id.getVariant())) {
+                if (overlay) {
+                    model = overlayModels.computeIfAbsent(model, key -> new EmissiveOverlayModel(key, sprites, null));
+                }
+                var dynamicProvider = DynamicEmissive.provider(id.id());
+                if (dynamicProvider != null) {
+                    model = new EmissiveOverlayModel(model, sprites, dynamicProvider);
+                }
             }
             return model;
         });
+        PENDING_OVERLAYS.put(event.getModelBakery(), new PendingOverlays(sprites,
+                overlayModels.values().stream().filter(EmissiveOverlayModel::hasStaticGeometry).toList()));
+    }
+
+    private static void onBakingCompleted(ModelEvent.BakingCompleted event) {
+        // The 1.21.1 atlas is uploaded after ModifyBakingResult and before BakingCompleted.
+        var pending = PENDING_OVERLAYS.remove(event.getModelBakery());
+        if (pending == null) return;
+        pending.sprites().bind(event.getModelManager().getAtlas(TextureAtlas.LOCATION_BLOCKS).getTextures());
+        RandomSource random = RandomSource.create(0);
+        pending.staticModels().forEach(model -> model.bakeOverlays(random));
     }
 
     /** 按 {@code relink:loader} 声明的类型接管模型；没有命中任何类型时返回 {@code null}。 */
@@ -128,15 +155,6 @@ public final class ALModelSetup {
         return new EmissiveWrappedModel(original);
     }
 
-    /**
-     * 本库扩展：OptiFine 式发光叠加层（{@code iron_ore.png} → {@code iron_ore_e.png}）。
-     * 由客户端配置 {@code abysslib-client.toml} 的 {@code emissiveLayer} 开关控制，默认关闭；
-     * 具体行为见 {@link EmissiveOverlayModel}。
-     */
-    private static BakedModel wrapOverlay(ModelResourceLocation id, BakedModel model) {
-        if ("inventory".equals(id.getVariant())) {
-            return model;
-        }
-        return new EmissiveOverlayModel(model);
+    private record PendingOverlays(EmissiveSpriteIndex sprites, List<EmissiveOverlayModel> staticModels) {
     }
 }

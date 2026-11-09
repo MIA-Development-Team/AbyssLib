@@ -58,11 +58,9 @@ public class AbyssLibReLink {
             return;
         }
         if (reload == ALClientConfig.Reload.MODELS) {
-            // 关闭 → 开启：模型之前没被包装，必须重新烘焙模型
-            LOGGER.info("AbyssLib/ReLink: emissive overlay enabled, reloading client resources");
+            LOGGER.info("AbyssLib/ReLink: emissive overlay settings changed, reloading client resources");
             minecraft.execute(minecraft::reloadResourcePacks);
         } else if (minecraft.level != null) {
-            // 关闭、或改后缀/排除表：重建区块网格即可（不重载图集，代价小得多）
             LOGGER.info("AbyssLib/ReLink: emissive overlay settings changed, rebuilding chunks");
             minecraft.execute(minecraft.levelRenderer::allChanged);
         }
