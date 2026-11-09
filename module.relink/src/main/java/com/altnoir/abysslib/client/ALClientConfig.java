@@ -20,7 +20,7 @@ public final class ALClientConfig {
     public static boolean emissiveLayer = true;
 
     /**
-     * 发光叠加层的贴图后缀（默认 {@code "_e"}；留空 = 关闭）。改动后需按 F3+T 重载资源。
+     * 发光叠加层的贴图后缀（默认 {@code "_e"}；留空 = 关闭）。
      */
     public static String emissiveSuffix = "_e";
 
@@ -41,7 +41,7 @@ public final class ALClientConfig {
 
     private static final ModConfigSpec.ConfigValue<String> EMISSIVE_SUFFIX = BUILDER
             .comment("Suffix of the emissive overlay texture. OptiFine uses \"_e\".",
-                    "Empty string disables the feature. Changed while enabled, chunks are rebuilt automatically.")
+                    "Empty string disables the feature. Changing the suffix while enabled reloads client resources.")
             .translation(configKey("emissiveSuffix"))
             .define("emissiveSuffix", "_e");
 
@@ -94,7 +94,7 @@ public final class ALClientConfig {
             return Reload.CHUNKS;
         }
         if (nowEnabled && (!wasSuffix.equals(emissiveSuffix) || !wasExclude.equals(emissiveExclude))) {
-            return Reload.CHUNKS;
+            return Reload.MODELS;
         }
         return Reload.NONE;
     }

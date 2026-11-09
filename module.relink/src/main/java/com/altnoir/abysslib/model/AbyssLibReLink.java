@@ -43,7 +43,7 @@ public class AbyssLibReLink {
             return;
         }
         if (reload == ALClientConfig.Reload.MODELS) {
-            LOGGER.info("AbyssLib/ReLink: emissive overlay enabled, reloading client resources");
+            LOGGER.info("AbyssLib/ReLink: emissive overlay settings changed, reloading client resources");
             minecraft.execute(minecraft::reloadResourcePacks);
         } else if (minecraft.level != null) {
             LOGGER.info("AbyssLib/ReLink: emissive overlay settings changed, rebuilding chunks");
